@@ -1,0 +1,28 @@
+[project]
+name = "loss-reserve-analyzer"
+version = "0.1.0"
+description = "Actuarial loss reserving pipeline using NAIC Schedule P triangle data"
+requires-python = ">=3.10"
+dependencies = [
+    "pandas>=2.0",
+    "numpy>=1.24",
+    "pyarrow>=14.0",
+    "plotly>=5.18",
+    "shiny>=0.10",
+    "pyyaml>=6.0",
+    "pytest>=7.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "jupyter>=1.0",
+    "ipykernel>=6.0",
+    "ruff>=0.3",
+]
+db = [
+    "sqlalchemy>=2.0",
+    "psycopg2-binary>=2.9",
+]
+
+[tool.ruff]
+line-length = 100

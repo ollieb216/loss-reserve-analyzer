@@ -1,0 +1,34 @@
+data:
+  raw_dir: data/raw
+  processed_dir: data/processed
+  lines_of_business:
+    - name: pp_auto
+      file: ppauto_pos98-07.csv
+      label: Private Passenger Auto
+    - name: com_auto
+      file: comauto_pos_98-07.csv
+      label: Commercial Auto
+    - name: wk_comp
+      file: wkcomp_pos_98-07.csv
+      label: Workers Compensation
+    - name: med_mal
+      file: medmal_pos_98-07.csv
+      label: Medical Malpractice
+    - name: oth_liab
+      file: othliab_pos_98-07.csv
+      label: Other Liability
+    - name: prod_liab
+      file: prodliab_pos_98-07.csv
+      label: Product Liability
+
+reserving:
+  factor_methods:
+    - volume_weighted
+    - simple_average
+    - medial
+  default_method: volume_weighted
+  tail_factor: 1.0
+  bf_prior_loss_ratio: 0.65
+
+output:
+  format: parquet
