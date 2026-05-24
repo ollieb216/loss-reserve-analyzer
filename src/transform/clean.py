@@ -1,112 +1,66 @@
-"""
-Data cleaning and loading utilities for triangle construction.
-
-Provides helper functions for loading the processed Parquet dataset,
-listing available carriers and lines of business, and filtering data.
-"""
+"""Data cleaning and loading utilities."""
 
 import logging
 from pathlib import Path
-
 import pandas as pd
+import yaml
 
 logger = logging.getLogger(__name__)
 
 
-def load_combined(path: str = "data/processed/combined_schedule_p.parquet") -> pd.DataFrame:
-    """
-    Load the combined Schedule P dataset from Parquet.
+def load_from_csvs(config_path="config/config.yaml"):
+    """Load all LOBs directly from CSVs and return combined DataFrame."""
+    with open(config_path) as f:
+        config = yaml.safe_load(f)
+    raw_dir = Path(config["data"]["raw_dir"])
+    frames = []
+    for lob in config["data"]["lines_of_business"]:
+        fp = raw_dir / lob["file"]
+        if not fp.exists():
+            logger.warning(f"File not found: {fp}")
+            continue
+        d = pd.read_csv(fp)
+        d.columns = d.columns.str.strip()
+        d["lob_name"] = lob["name"]
+        d["lob_label"] = lob["label"]
+        frames.append(d)
+    if not frames:
+        raise FileNotFoundError(f"No CSV files found in {raw_dir}")
+    return pd.concat(frames, ignore_index=True)
 
-    Args:
-        path: Path to the Parquet file produced by the ingestion step.
 
-    Returns:
-        Combined DataFrame with all carriers and lines of business.
-    """
+def load_combined(path="data/processed/combined_schedule_p.parquet"):
+    """Load combined dataset from Parquet, fall back to CSVs."""
     filepath = Path(path)
-    if not filepath.exists():
-        raise FileNotFoundError(
-            f"Combined data not found at {filepath}. Run the ingestion step first: "
-            f"python -m src.ingestion.ingest"
-        )
-
-    df = pd.read_parquet(filepath)
-    logger.info(f"Loaded {len(df):,} rows from {filepath}")
-    return df
+    if filepath.exists():
+        try:
+            return pd.read_parquet(filepath)
+        except ImportError:
+            pass
+    return load_from_csvs()
 
 
-def list_carriers(df: pd.DataFrame, lob_name: str = None) -> pd.DataFrame:
-    """
-    List available carriers, optionally filtered by line of business.
-
-    Returns a DataFrame with GRCODE, GRNAME, and row count.
-    """
+def list_carriers(df, lob_name=None):
     if lob_name:
         df = df[df["lob_name"] == lob_name]
-
-    carriers = (
-        df.groupby(["GRCODE", "GRNAME"])
-        .size()
-        .reset_index(name="rows")
-        .sort_values("GRCODE")
-    )
-    return carriers
+    return df.groupby(["GRCODE", "GRNAME"]).size().reset_index(name="rows").sort_values("GRCODE")
 
 
-def list_lobs(df: pd.DataFrame) -> pd.DataFrame:
-    """
-    List available lines of business with carrier counts.
-    """
-    lobs = (
-        df.groupby(["lob_name", "lob_label"])
-        .agg(carriers=("GRCODE", "nunique"), rows=("GRCODE", "size"))
-        .reset_index()
-    )
-    return lobs
+def list_lobs(df):
+    return df.groupby(["lob_name", "lob_label"]).agg(
+        carriers=("GRCODE", "nunique"), rows=("GRCODE", "size")
+    ).reset_index()
 
 
-def get_earned_premium(
-    df: pd.DataFrame, grcode: int, lob_name: str
-) -> pd.Series:
-    """
-    Extract net earned premium by accident year for a carrier and LOB.
-
-    Used as input for the Bornhuetter-Ferguson method. Returns one value
-    per accident year (premium is constant across development lags).
-
-    Returns:
-        Series indexed by AccidentYear with EarnedPremNet values.
-    """
+def get_earned_premium(df, grcode, lob_name):
     mask = (df["GRCODE"] == grcode)
     if "lob_name" in df.columns:
         mask = mask & (df["lob_name"] == lob_name)
-
-    subset = df.loc[mask]
-
-    # Premium is the same for all development lags within an accident year,
-    # so just take the first value per AY
-    premium = (
-        subset.groupby("AccidentYear")["EarnedPremNet"]
-        .first()
-        .sort_index()
-    )
-
-    return premium
+    return df.loc[mask].groupby("AccidentYear")["EarnedPremNet"].first().sort_index()
 
 
-def get_posted_reserves(
-    df: pd.DataFrame, grcode: int, lob_name: str
-) -> float:
-    """
-    Get the posted reserves as of 2007 for a carrier and LOB.
-
-    This is the actual reserve the carrier posted, useful as a
-    benchmark to compare against model estimates.
-    """
+def get_posted_reserves(df, grcode, lob_name):
     mask = (df["GRCODE"] == grcode)
     if "lob_name" in df.columns:
         mask = mask & (df["lob_name"] == lob_name)
-
-    subset = df.loc[mask]
-    posted = subset["PostedReserves2007"].iloc[0]
-    return posted
+    return df.loc[mask]["PostedReserves2007"].iloc[0]
