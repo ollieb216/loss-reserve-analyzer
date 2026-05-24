@@ -71,7 +71,6 @@ loss-reserve-analyzer/
 │   └── dashboard/               # Shiny app (planned)
 ├── docs/                        # Static dashboard for GitHub Pages (planned)
 ├── tests/
-├── notebooks/
 ├── .gitignore
 ├── pyproject.toml
 └── README.md
