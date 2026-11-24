@@ -91,6 +91,40 @@ def bornhuetter_ferguson(
     return results_df
 
 
+def complete_triangle_bf(
+    triangle: Triangle,
+    earned_premium: pd.Series,
+    prior_loss_ratio: float = 0.65,
+    method: str = "volume_weighted",
+    tail_factor: float = 1.0,
+) -> pd.DataFrame:
+    """
+    Fill in the lower-right of the triangle using BF projections.
+
+    For each accident year, projects missing lags using the BF ultimate
+    and the percent reported at each lag.
+
+    Returns:
+        DataFrame with the same shape as the original triangle, but with
+        NaN cells filled by BF projections.
+    """
+    cdfs = get_cdfs(triangle, method=method, tail_factor=tail_factor)
+    bf_results = bornhuetter_ferguson(
+        triangle, earned_premium, prior_loss_ratio, method, tail_factor
+    )
+    filled = triangle.data.copy()
+    lags = triangle.development_lags
+
+    for ay in triangle.accident_years:
+        bf_ult = bf_results.loc[ay, "bf_ultimate"]
+        for lag in lags:
+            if pd.isna(filled.loc[ay, lag]):
+                pct_reported = 1.0 / cdfs[lag]
+                filled.loc[ay, lag] = round(bf_ult * pct_reported, 0)
+
+    return filled
+
+
 def compare_methods(
     triangle: Triangle,
     earned_premium: pd.Series,
