@@ -4,16 +4,16 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Loss Reserve Analyzer</title>
-<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
 <script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
 <style>
 *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
 
 :root {
-  --bg: #FAFAF8;
+  --bg: #F7F7F5;
   --surface: #FFFFFF;
   --surface-alt: #F3F2EE;
-  --border: #E4E3DF;
+  --border: #E8E7E3;
   --text-1: #1A1A18;
   --text-2: #6B6A66;
   --text-3: #9C9B97;
@@ -24,8 +24,15 @@
   --blue-light: #E6EEF8;
   --coral: #C44D2B;
   --coral-light: #FAECE7;
-  --mono: 'DM Mono', monospace;
+  --mono: 'IBM Plex Mono', monospace;
   --sans: 'DM Sans', sans-serif;
+  --shadow-sm: 0 1px 2px rgba(0,0,0,0.04), 0 1px 3px rgba(0,0,0,0.03);
+  --shadow-md: 0 2px 4px rgba(0,0,0,0.04), 0 4px 12px rgba(0,0,0,0.03);
+}
+
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
 body {
@@ -40,10 +47,11 @@ body {
   padding: 2rem 2.5rem 1.5rem;
   border-bottom: 1px solid var(--border);
   background: var(--surface);
+  border-top: 3px solid var(--accent);
 }
 
 .header h1 {
-  font-size: 1.25rem;
+  font-size: 1.6rem;
   font-weight: 600;
   letter-spacing: -0.02em;
   margin-bottom: 0.25rem;
@@ -94,34 +102,77 @@ select:focus { outline: 2px solid var(--accent); outline-offset: -1px; border-co
 
 .main { padding: 1.5rem 2.5rem 3rem; }
 
-.metrics {
+.metrics-row {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-  gap: 0.75rem;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 1rem;
   margin-bottom: 1.5rem;
 }
 
-.metric {
+@media (max-width: 900px) { .metrics-row { grid-template-columns: 1fr; } }
+
+.metric-group {
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: 8px;
-  padding: 1rem 1.25rem;
+  box-shadow: var(--shadow-sm);
+  overflow: hidden;
+  animation: fadeUp 0.4s ease both;
+  transition: box-shadow 0.2s ease;
 }
 
-.metric-label {
+.metric-group:nth-child(1) { animation-delay: 0.0s; }
+.metric-group:nth-child(2) { animation-delay: 0.08s; }
+.metric-group:nth-child(3) { animation-delay: 0.16s; }
+
+.metric-group:hover { box-shadow: var(--shadow-md); }
+
+.metric-group-header {
+  padding: 0.65rem 1rem 0.5rem;
+  border-bottom: 1px solid var(--border);
   font-size: 0.7rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-2);
+  background: var(--surface-alt);
+}
+
+.metric-group-body {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0;
+}
+
+.metric-group-body.single { grid-template-columns: 1fr; }
+
+.metric {
+  padding: 0.85rem 1rem;
+}
+
+.metric + .metric { border-left: 1px solid var(--border); }
+
+.metric-label {
+  font-size: 0.65rem;
   font-weight: 500;
   color: var(--text-3);
   text-transform: uppercase;
-  letter-spacing: 0.06em;
-  margin-bottom: 0.25rem;
+  letter-spacing: 0.05em;
+  margin-bottom: 0.15rem;
 }
 
 .metric-value {
   font-family: var(--mono);
-  font-size: 1.35rem;
+  font-size: 1.25rem;
   font-weight: 500;
   letter-spacing: -0.02em;
+}
+
+.metric-desc {
+  font-size: 0.68rem;
+  color: var(--text-3);
+  margin-top: 0.2rem;
+  line-height: 1.35;
 }
 
 .metric-value.accent { color: var(--accent-dark); }
@@ -142,6 +193,9 @@ select:focus { outline: 2px solid var(--accent); outline-offset: -1px; border-co
   border: 1px solid var(--border);
   border-radius: 8px;
   overflow: hidden;
+  box-shadow: var(--shadow-sm);
+  animation: fadeUp 0.4s ease both;
+  animation-delay: 0.1s;
 }
 
 .card-header {
@@ -251,9 +305,15 @@ table.compare tr.total-row td {
   flex-direction: column;
   align-items: center;
   background: var(--surface-alt);
+  border: 1px solid var(--border);
   border-radius: 6px;
   padding: 0.5rem 0.75rem;
   min-width: 65px;
+  transition: background 0.15s ease;
+}
+
+.factor-pill:hover {
+  background: var(--accent-light);
 }
 
 .factor-pill .period {
@@ -277,14 +337,111 @@ table.compare tr.total-row td {
   font-size: 0.9rem;
 }
 
+.toggle-group {
+  display: flex;
+  gap: 0;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.toggle-btn {
+  font-family: var(--sans);
+  font-size: 0.7rem;
+  font-weight: 500;
+  padding: 0.3rem 0.7rem;
+  border: none;
+  background: var(--surface);
+  color: var(--text-3);
+  cursor: pointer;
+  transition: all 0.15s ease;
+  border-right: 1px solid var(--border);
+}
+
+.toggle-btn:last-child { border-right: none; }
+.toggle-btn:hover { color: var(--text-1); background: var(--surface-alt); }
+.toggle-btn.active { background: var(--accent); color: white; }
+
+table.triangle td.projected {
+  font-style: italic;
+  background-image: repeating-linear-gradient(
+    135deg,
+    transparent,
+    transparent 3px,
+    rgba(43, 94, 167, 0.06) 3px,
+    rgba(43, 94, 167, 0.06) 4px
+  ) !important;
+}
+table.triangle td.projected.heat-1 { background-color: #e9eef6 !important; }
+table.triangle td.projected.heat-2 { background-color: #d4dfee !important; }
+table.triangle td.projected.heat-3 { background-color: #bdd0e6 !important; }
+table.triangle td.projected.heat-4 { background-color: #a3bfdd !important; }
+table.triangle td.projected.heat-5 { background-color: #85abd2 !important; }
+
+.tri-legend {
+  display: flex;
+  gap: 1.25rem;
+  padding: 0.65rem 0 0.15rem;
+  margin-top: 0.5rem;
+  border-top: 1px solid var(--border);
+}
+
+.tri-legend-item {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.7rem;
+  color: var(--text-2);
+}
+
+.tri-legend-swatch {
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  border-radius: 3px;
+  border: 1px solid var(--border);
+}
+
+.tri-legend-swatch.observed { background: #c4e2c1; }
+.tri-legend-swatch.projected {
+  background: #bdd0e6;
+  background-image: repeating-linear-gradient(
+    135deg,
+    transparent,
+    transparent 2px,
+    rgba(43, 94, 167, 0.1) 2px,
+    rgba(43, 94, 167, 0.1) 3px
+  );
+}
+
 .plot-container { width: 100%; min-height: 300px; }
+
+table.triangle td, table.triangle th { position: relative; }
+table.triangle td.highlight-cell::after,
+table.triangle td.highlight-row::after,
+table.triangle td.highlight-col::after,
+table.triangle th.highlight-col::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+table.triangle td.highlight-row::after { background: rgba(45, 90, 39, 0.08); }
+table.triangle td.highlight-col::after,
+table.triangle th.highlight-col::after { background: rgba(45, 90, 39, 0.08); }
+table.triangle td.highlight-cell::after { background: rgba(45, 90, 39, 0.18); outline: 2px solid var(--accent); outline-offset: -1px; }
+table.compare tr:not(.total-row):hover td { background: var(--blue-light); }
+
+select {
+  transition: border-color 0.15s ease;
+}
 </style>
 </head>
 <body>
 
 <div class="header">
   <h1>Loss Reserve Analyzer</h1>
-  <p>NAIC Schedule P triangle data &middot; Chain ladder &amp; Bornhuetter-Ferguson methods &middot; CAS Loss Reserve Database</p>
+  <p>Chain Ladder &amp; Bornhuetter-Ferguson reserving methods</p>
 </div>
 
 <div class="controls">
@@ -299,19 +456,62 @@ table.compare tr.total-row td {
 </div>
 
 <div class="main">
-  <div class="metrics" id="metrics">
-    <div class="metric"><div class="metric-label">Latest paid</div><div class="metric-value" id="m-latest">--</div></div>
-    <div class="metric"><div class="metric-label">CL ultimate</div><div class="metric-value accent" id="m-cl-ult">--</div></div>
-    <div class="metric"><div class="metric-label">BF ultimate</div><div class="metric-value blue" id="m-bf-ult">--</div></div>
-    <div class="metric"><div class="metric-label">CL IBNR</div><div class="metric-value accent" id="m-cl-ibnr">--</div></div>
-    <div class="metric"><div class="metric-label">BF IBNR</div><div class="metric-value blue" id="m-bf-ibnr">--</div></div>
-    <div class="metric"><div class="metric-label">Difference</div><div class="metric-value coral" id="m-diff">--</div></div>
+  <div class="metrics-row" id="metrics">
+    <div class="metric-group">
+      <div class="metric-group-header">Paid to date</div>
+      <div class="metric-group-body single">
+        <div class="metric">
+          <div class="metric-label">Total paid losses</div>
+          <div class="metric-value" id="m-latest">--</div>
+          <div class="metric-desc">Sum of all cumulative paid losses across accident years</div>
+        </div>
+      </div>
+    </div>
+    <div class="metric-group">
+      <div class="metric-group-header">Projected ultimate losses</div>
+      <div class="metric-group-body">
+        <div class="metric">
+          <div class="metric-label">Chain ladder</div>
+          <div class="metric-value accent" id="m-cl-ult">--</div>
+        </div>
+        <div class="metric">
+          <div class="metric-label">Bornhuetter-Ferguson</div>
+          <div class="metric-value blue" id="m-bf-ult">--</div>
+        </div>
+      </div>
+    </div>
+    <div class="metric-group">
+      <div class="metric-group-header">IBNR reserves</div>
+      <div class="metric-group-body">
+        <div class="metric">
+          <div class="metric-label">Chain ladder</div>
+          <div class="metric-value accent" id="m-cl-ibnr">--</div>
+          <div class="metric-desc">Unpaid estimate</div>
+        </div>
+        <div class="metric">
+          <div class="metric-label">Bornhuetter-Ferguson</div>
+          <div class="metric-value blue" id="m-bf-ibnr">--</div>
+          <div class="metric-desc">Unpaid estimate</div>
+        </div>
+      </div>
+    </div>
   </div>
 
   <div class="card" style="margin-bottom: 1.25rem;">
-    <div class="card-header">Loss triangle (cumulative paid losses)</div>
+    <div class="card-header" style="display: flex; justify-content: space-between; align-items: center;">
+      <span>Loss triangle (cumulative paid losses)</span>
+      <div class="toggle-group" id="tri-toggle">
+        <button class="toggle-btn active" data-mode="observed">Observed</button>
+        <button class="toggle-btn" data-mode="cl">Chain Ladder</button>
+        <button class="toggle-btn" data-mode="bf">Bornhuetter-Ferguson</button>
+      </div>
+    </div>
     <div class="card-body">
       <div class="triangle-wrap" id="triangle-table"></div>
+      <div class="tri-legend" id="tri-legend" style="display: none;">
+        <span class="tri-legend-item"><span class="tri-legend-swatch observed"></span>Observed</span>
+        <span class="tri-legend-item"><span class="tri-legend-swatch projected"></span>Projected</span>
+      </div>
     </div>
   </div>
 
@@ -339,12 +539,14 @@ table.compare tr.total-row td {
       <div id="compare-table"></div>
     </div>
   </div>
+
 </div>
 
 <script>
 let INDEX = [];
 let RESULTS = [];
 let currentResult = null;
+let triangleMode = 'observed';
 
 const fmt = (n) => {
   if (n === null || n === undefined || isNaN(n)) return '--';
@@ -376,6 +578,16 @@ async function init() {
 
   lobSelect.addEventListener('change', () => updateCarriers());
   document.getElementById('carrier-select').addEventListener('change', () => render());
+
+  document.getElementById('tri-toggle').addEventListener('click', (e) => {
+    const btn = e.target.closest('.toggle-btn');
+    if (!btn) return;
+    document.querySelectorAll('#tri-toggle .toggle-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    triangleMode = btn.dataset.mode;
+    document.getElementById('tri-legend').style.display = triangleMode === 'observed' ? 'none' : 'flex';
+    renderTriangle();
+  });
 
   updateCarriers('1767');
 }
@@ -427,21 +639,21 @@ function renderMetrics() {
   document.getElementById('m-bf-ult').textContent = fmt(t.bf_ultimate);
   document.getElementById('m-cl-ibnr').textContent = fmt(t.cl_ibnr);
   document.getElementById('m-bf-ibnr').textContent = fmt(t.bf_ibnr);
-  document.getElementById('m-diff').textContent = fmt(t.cl_ibnr - t.bf_ibnr);
 }
 
 function renderTriangle() {
-  const tri = currentResult.triangle;
-  if (!tri || tri.length === 0) return;
+  const observed = currentResult.triangle;
+  if (!observed || observed.length === 0) return;
 
-  const rows = tri;
-  const lags = Object.keys(rows[0]).filter(k => k !== 'AccidentYear');
+  const triSource = triangleMode === 'cl' ? currentResult.triangle_cl
+                  : triangleMode === 'bf' ? currentResult.triangle_bf
+                  : observed;
+
+  const lags = Object.keys(observed[0]).filter(k => k !== 'AccidentYear');
 
   let allVals = [];
-  rows.forEach(r => {
-    lags.forEach(l => {
-      if (r[l] !== null) allVals.push(r[l]);
-    });
+  triSource.forEach(r => {
+    lags.forEach(l => { if (r[l] !== null) allVals.push(r[l]); });
   });
 
   const minV = Math.min(...allVals);
@@ -458,21 +670,50 @@ function renderTriangle() {
     return 'heat-5';
   };
 
-  let html = '<table class="triangle"><thead><tr><th>AY</th>';
-  lags.forEach(l => html += `<th>${l}</th>`);
+  let html = '<table class="triangle"><thead><tr><th data-col="0">AY</th>';
+  lags.forEach((l, ci) => html += `<th data-col="${ci + 1}">${l}</th>`);
   html += '</tr></thead><tbody>';
 
-  rows.forEach(r => {
-    html += `<tr><td>${r.AccidentYear}</td>`;
-    lags.forEach(l => {
-      const v = r[l];
-      html += `<td class="${heatClass(v)}">${v === null ? '' : fmt(v)}</td>`;
+  triSource.forEach((row, ri) => {
+    const obsRow = observed[ri];
+    html += `<tr><td data-col="0">${row.AccidentYear}</td>`;
+    lags.forEach((l, ci) => {
+      const v = row[l];
+      const isProjected = triangleMode !== 'observed' && obsRow[l] === null && v !== null;
+      const cls = [heatClass(v)];
+      if (isProjected) cls.push('projected');
+      html += `<td data-col="${ci + 1}" class="${cls.join(' ')}">${v === null ? '' : fmt(v)}</td>`;
     });
     html += '</tr>';
   });
 
   html += '</tbody></table>';
   document.getElementById('triangle-table').innerHTML = html;
+
+  const table = document.querySelector('.triangle');
+  if (!table) return;
+
+  table.addEventListener('mouseover', (e) => {
+    const td = e.target.closest('td');
+    if (!td) return;
+    const col = td.dataset.col;
+    const row = td.parentElement;
+
+    table.querySelectorAll('td, th').forEach(c => {
+      c.classList.remove('highlight-cell', 'highlight-row', 'highlight-col');
+    });
+
+    row.querySelectorAll('td').forEach(c => c.classList.add('highlight-row'));
+    table.querySelectorAll(`[data-col="${col}"]`).forEach(c => c.classList.add('highlight-col'));
+    td.classList.remove('highlight-row', 'highlight-col');
+    td.classList.add('highlight-cell');
+  });
+
+  table.addEventListener('mouseleave', () => {
+    table.querySelectorAll('td, th').forEach(c => {
+      c.classList.remove('highlight-cell', 'highlight-row', 'highlight-col');
+    });
+  });
 }
 
 function renderFactors() {
@@ -493,8 +734,15 @@ function renderDevPlot() {
   if (!tri || tri.length === 0) return;
 
   const lags = Object.keys(tri[0]).filter(k => k !== 'AccidentYear').map(Number);
+  const totalRows = tri.length;
 
-  const traces = tri.map((row) => {
+  const palette = [
+    '#2D5A27', '#2B5EA7', '#C44D2B', '#7B5EA7',
+    '#B8860B', '#1B7A6E', '#A0522D', '#4A708B',
+    '#8B4789', '#5F7A3B',
+  ];
+
+  const traces = tri.map((row, i) => {
     const ay = row.AccidentYear;
     const validLags = [];
     const validVals = [];
@@ -502,26 +750,33 @@ function renderDevPlot() {
       const v = row[String(l)];
       if (v !== null) { validLags.push(l); validVals.push(v); }
     });
+
+    const isRecent = i >= totalRows - 3;
+    const opacity = isRecent ? 1.0 : 0.2 + (i / totalRows) * 0.4;
+    const color = palette[i % palette.length];
+
     return {
       x: validLags,
       y: validVals,
       name: String(ay),
       type: 'scatter',
-      mode: 'lines+markers',
-      marker: { size: 4 },
-      line: { width: 1.5 },
+      mode: isRecent ? 'lines+markers' : 'lines',
+      marker: { size: isRecent ? 5 : 3, color: color, opacity: opacity },
+      line: { width: isRecent ? 2.5 : 1.2, color: color },
+      opacity: opacity,
     };
   });
 
   const layout = {
     margin: { t: 10, r: 20, b: 40, l: 60 },
-    xaxis: { title: 'Development lag', dtick: 1 },
-    yaxis: { title: 'Cumulative paid loss' },
+    xaxis: { title: 'Development lag', dtick: 1, gridcolor: '#F0EFEB', zerolinecolor: '#E8E7E3' },
+    yaxis: { title: 'Cumulative paid loss', gridcolor: '#F0EFEB', zerolinecolor: '#E8E7E3' },
     legend: { font: { size: 10 }, orientation: 'h', y: -0.25 },
     font: { family: 'DM Sans', size: 12 },
     plot_bgcolor: 'rgba(0,0,0,0)',
     paper_bgcolor: 'rgba(0,0,0,0)',
     height: 300,
+    hovermode: 'x unified',
   };
 
   Plotly.newPlot('dev-plot', traces, layout, { responsive: true, displayModeBar: false });
@@ -531,27 +786,50 @@ function renderComparePlot() {
   const comp = currentResult.comparison;
   const ays = comp.map(r => String(r.accident_year));
 
-  const traces = [
-    {
-      x: ays, y: comp.map(r => r.cl_ibnr), name: 'CL IBNR',
-      type: 'bar', marker: { color: '#2D5A27' },
-    },
-    {
-      x: ays, y: comp.map(r => r.bf_ibnr), name: 'BF IBNR',
-      type: 'bar', marker: { color: '#2B5EA7' },
-    },
-  ];
+  const traces = [];
+
+  // Connecting lines between CL and BF for each year (dumbbell stems)
+  comp.forEach((r, i) => {
+    traces.push({
+      x: [r.cl_ibnr, r.bf_ibnr],
+      y: [ays[i], ays[i]],
+      mode: 'lines',
+      line: { color: '#D4D3CF', width: 2 },
+      showlegend: false,
+      hoverinfo: 'skip',
+    });
+  });
+
+  // CL dots
+  traces.push({
+    x: comp.map(r => r.cl_ibnr),
+    y: ays,
+    name: 'CL IBNR',
+    mode: 'markers',
+    marker: { color: '#2D5A27', size: 9, symbol: 'circle' },
+    hovertemplate: 'CL IBNR: %{x:,.0f}<extra>%{y}</extra>',
+  });
+
+  // BF dots
+  traces.push({
+    x: comp.map(r => r.bf_ibnr),
+    y: ays,
+    name: 'BF IBNR',
+    mode: 'markers',
+    marker: { color: '#2B5EA7', size: 9, symbol: 'diamond' },
+    hovertemplate: 'BF IBNR: %{x:,.0f}<extra>%{y}</extra>',
+  });
 
   const layout = {
-    margin: { t: 10, r: 20, b: 40, l: 60 },
-    xaxis: { title: 'Accident year' },
-    yaxis: { title: 'IBNR reserve' },
-    barmode: 'group',
-    legend: { font: { size: 10 }, orientation: 'h', y: -0.25 },
+    margin: { t: 10, r: 20, b: 40, l: 50 },
+    xaxis: { title: 'IBNR reserve', gridcolor: '#F0EFEB', zerolinecolor: '#E8E7E3' },
+    yaxis: { title: '', autorange: 'reversed', gridcolor: '#F0EFEB' },
+    legend: { font: { size: 10 }, orientation: 'h', y: -0.2 },
     font: { family: 'DM Sans', size: 12 },
     plot_bgcolor: 'rgba(0,0,0,0)',
     paper_bgcolor: 'rgba(0,0,0,0)',
     height: 300,
+    hovermode: 'closest',
   };
 
   Plotly.newPlot('compare-plot', traces, layout, { responsive: true, displayModeBar: false });

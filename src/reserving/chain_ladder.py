@@ -113,3 +113,40 @@ def get_cdfs(
         cdfs[i] = ata_values[i] * cdfs[i + 1]
 
     return pd.Series(cdfs, index=lags, name="cdf_to_ultimate")
+
+
+def complete_triangle_cl(
+    triangle: Triangle,
+    method: str = "volume_weighted",
+    tail_factor: float = 1.0,
+) -> pd.DataFrame:
+    """
+    Fill in the lower-right of the triangle using chain ladder projections.
+
+    For each accident year, projects missing lags by scaling the latest
+    observed value through the remaining CDFs.
+
+    Returns:
+        DataFrame with the same shape as the original triangle, but with
+        NaN cells filled by CL projections.
+    """
+    cdfs = get_cdfs(triangle, method=method, tail_factor=tail_factor)
+    filled = triangle.data.copy()
+    lags = triangle.development_lags
+
+    for ay in triangle.accident_years:
+        row = filled.loc[ay]
+        observed = row.dropna()
+        if len(observed) == 0:
+            continue
+
+        latest_lag = observed.index[-1]
+        latest_val = observed.iloc[-1]
+        cdf_latest = cdfs[latest_lag]
+
+        for lag in lags:
+            if pd.isna(filled.loc[ay, lag]):
+                cdf_target = cdfs[lag]
+                filled.loc[ay, lag] = round(latest_val * cdf_latest / cdf_target, 0)
+
+    return filled

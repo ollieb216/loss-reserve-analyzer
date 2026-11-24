@@ -14,8 +14,8 @@ import pandas as pd
 
 from src.transform.clean import load_combined, list_carriers, list_lobs, get_earned_premium
 from src.transform.triangle import Triangle
-from src.reserving.chain_ladder import chain_ladder, get_cdfs
-from src.reserving.bornhuetter_ferguson import bornhuetter_ferguson, compare_methods
+from src.reserving.chain_ladder import chain_ladder, get_cdfs, complete_triangle_cl
+from src.reserving.bornhuetter_ferguson import bornhuetter_ferguson, compare_methods, complete_triangle_bf
 
 logger = logging.getLogger(__name__)
 
@@ -52,11 +52,25 @@ def export_all(output_dir: str = "docs/data", prior_loss_ratio: float = 0.65):
                 bf = bornhuetter_ferguson(tri, premium, prior_loss_ratio=prior_loss_ratio)
                 comp = compare_methods(tri, premium, prior_loss_ratio=prior_loss_ratio)
 
+                # Build completed triangles
+                cl_filled = complete_triangle_cl(tri)
+                bf_filled = complete_triangle_bf(tri, premium, prior_loss_ratio=prior_loss_ratio)
+
                 # Get triangle data for heatmap
                 tri_data = tri.data.copy()
                 tri_data.index.name = "AccidentYear"
                 tri_data = tri_data.reset_index()
                 tri_data.columns = tri_data.columns.astype(str)
+
+                cl_tri_data = cl_filled.copy()
+                cl_tri_data.index.name = "AccidentYear"
+                cl_tri_data = cl_tri_data.reset_index()
+                cl_tri_data.columns = cl_tri_data.columns.astype(str)
+
+                bf_tri_data = bf_filled.copy()
+                bf_tri_data.index.name = "AccidentYear"
+                bf_tri_data = bf_tri_data.reset_index()
+                bf_tri_data.columns = bf_tri_data.columns.astype(str)
 
                 # Get development factors
                 ata = tri.age_to_age_factors()
@@ -73,6 +87,8 @@ def export_all(output_dir: str = "docs/data", prior_loss_ratio: float = 0.65):
                     "lob_name": lob_name,
                     "lob_label": lob_label,
                     "triangle": _df_to_dict(tri_data),
+                    "triangle_cl": _df_to_dict(cl_tri_data),
+                    "triangle_bf": _df_to_dict(bf_tri_data),
                     "ata_factors": _df_to_dict(ata),
                     "selected_factors": {k: (None if np.isnan(v) else round(v, 4)) for k, v in selected.to_dict().items()},
                     "cdfs": {str(k): (None if np.isnan(v) else round(v, 4)) for k, v in cdfs.to_dict().items()},
